@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Expected Goals: Premier League</title>
+    <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+     <script src="https://cdn.rawgit.com/eligrey/canvas-toBlob.js/f1a01896135ab378aa5c0118eadd81da55e698d8/canvas-toBlob.js"></script>
+	 <script src="https://cdn.rawgit.com/eligrey/FileSaver.js/e9d941381475b5df8b7d7691013401e171014e89/FileSaver.min.js"></script>
+	
+		<style type="text/css">
+
+        @font-face {
+            font-family: 'open_sansbold';
+            src: url('opensans-bold-webfont.woff2') format('woff2'),
+                url('opensans-bold-webfont.woff') format('woff'),
+                url('opensans-bold-webfont.ttf') format('ttf');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* Save Button */
+        .savebtn {
+            background-color: #3A8D4C;
+            font-weight: bold;
+            color: #faf0e6;
+            padding: 10px;
+            font-family: "open_sansbold";
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+        .savebtn:hover {
+            background-color: #404E4D;
+        }
+
+        /* Dropdown Button */
+        .dropbtn {
+        background-color: #3A8D4C;
+        font-weight: bold;
+        color: #faf0e6;
+        padding: 10px;
+        font-family: "open_sansbold";
+        font-size: 12px;
+        border: none;
+        }
+
+        /* The container <div> - needed to position the dropdown content */
+        .dropdown {
+        position: relative;
+        display: inline-block;
+        }
+        /* Dropdown Content (Hidden by Default) */
+        .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f1f1f1;
+        min-width: 160px;
+        z-index: 1;
+        }
+        /* Links inside the dropdown */
+        .dropdown-content a {
+        color: #404E4D;
+        font-size: 10px;
+        font-family: "open_sansbold";
+        font-weight: bold;
+        padding: 4px 6px;
+        text-decoration: none;
+        display: block;
+        }
+        /* Change color of dropdown links on hover */
+        .dropdown-content a:hover {background-color: #ddd;}
+
+        /* Show the dropdown menu on hover */
+        .dropdown:hover .dropdown-content {display: block;}
+
+        /* Change the background color of the dropdown button when the dropdown content is shown */
+        .dropdown:hover .dropbtn {background-color: #404E4D;}
+
+        .gameDataHeader {
+        font-weight: bold;
+        fill: #404E4D;
+        font-family: "open_sansbold";
+        font-size: 36px;
+        }
+
+        .gameData {
+        font-size: 16px;
+        font-weight: bold;
+        fill: #404E4D;
+        font-family: "open_sansbold";
+        }
+
+        .gameDataDate {
+        font-size: 13px;
+        font-weight: bold;
+        fill: #404E4D;
+        font-family: "open_sansbold";
+        }
+
+        .field-lines {
+            stroke: #faf0e6;
+            stroke-width: 2px;
+        }
+
+        .shotsHome {
+            stroke: #404E4D;
+            stroke-width: 2px;
+            cursor: pointer;            
+        }
+        .shotsAway {
+            stroke: #404E4D;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+        
+
+        .shot-mouse-over {
+        font-size: 16px;
+        text-anchor: middle;
+        font-weight: bold;
+        fill: #404E4D;
+        font-family: "open_sansbold";
+        pointer-events: none;
+        }
+
+        .shot-mouse-over-box {
+            pointer-events: none;
+        }
+
+        #Field {
+            padding-left: 380px;
+            padding-top: 50px;
+        }
+		</style>
+	</head>
+
+	<body>
+        <div class="buttonContainer">
+        <div class="dropdown">
+        <button class="dropbtn">SELECT GAME</button>
+        <div class="dropdown-content" id='gameSelector'>
+        </div>
+        </div>
+        <button class="dropbtn">CHAMPIONS LEAGUE</button>
+        <button class="savebtn" id="saveButton">SAVE CHART</button>
+        
+        </div>
+
+        <div id="Field"></div>
+
+
+
+		<script type="text/javascript">
+            var width = 600,
+                height = 600,
+                fieldWidth = 104,
+                fieldHeight = 68,
+                fieldScale = 5,
+                fieldColor = "3A8D4C",
+                fieldStroke = 2,
+                fieldMargin = 20
+        
+        var svg = d3.select('#Field').append('svg')
+            .attr('width', width)
+            .attr('height',height);
+
+        var fieldSVG = svg.append('g').attr("transform", "translate(" + width/2 + "," + height*3.5/7 + ")");  
+
+        fieldSVG.append('rect')
+            .attr("width", width)
+            .attr("height", height)
+            .attr("y", -height/2)
+            .attr("x", -width/2)
+            .style("fill", "white")
+
+        //Draw Field:
+        fieldSVG.append('rect')
+            .attr("width", fieldWidth*fieldScale + fieldMargin)
+            .attr("height", fieldHeight*fieldScale + fieldMargin)
+            .attr("y", (-fieldHeight*fieldScale/2) - fieldMargin/2)
+            .attr("x", (-fieldWidth*fieldScale/2) - fieldMargin/2)
+            .style("fill", fieldColor)
+
+        fieldSVG.append('rect')
+            .attr("width", (fieldWidth*fieldScale))
+            .attr("height", (fieldHeight*fieldScale))
+            .attr("y", (-fieldHeight*fieldScale/2))
+            .attr("x", (-fieldWidth*fieldScale/2))
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('circle')
+            .attr("r", 9.15*fieldScale)
+            .attr("cx", (-fieldWidth+22)*fieldScale/2)
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('rect')
+            .attr("width", (16.5*fieldScale))
+            .attr("height", (40.32*fieldScale))
+            .attr("y", (-fieldHeight*fieldScale/2)+(40.32*fieldScale)/3)
+            .attr("x", (-fieldWidth*fieldScale/2))
+            .style("fill", fieldColor)
+            .attr('class', 'field-lines')
+    
+        fieldSVG.append('circle')
+            .attr("r", 9.15*fieldScale)
+            .attr("cx", (fieldWidth-22)*fieldScale/2)
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('rect')
+            .attr("width", (16.5*fieldScale))
+            .attr("height", (40.32*fieldScale))
+            .attr("y", (-fieldHeight*fieldScale/2)+(40.32*fieldScale)/3)
+            .attr("x", (fieldWidth*fieldScale/2)-(16.5*fieldScale))
+            .style("fill", fieldColor)
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('rect')
+            .attr("width", (5.5*fieldScale))
+            .attr("height", (18.32*fieldScale))
+            .attr("y", (-fieldHeight*fieldScale/2)+(18.32*fieldScale/0.75))
+            .attr("x", (-fieldWidth*fieldScale/2))
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('rect')
+            .attr("width", (5.5*fieldScale))
+            .attr("height", (18.32*fieldScale))
+            .attr("y", (-fieldHeight*fieldScale/2)+(18.32*fieldScale/0.75))
+            .attr("x", (fieldWidth*fieldScale/2)-(5.5*fieldScale))
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('circle')
+            .attr("r", 9.15*fieldScale)
+            .style("fill", "none")
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('circle')
+            .attr("r", 0.5*fieldScale)
+            .style("fill", "#fff8b5")
+        
+        fieldSVG.append('line')
+            .attr("y1", -fieldHeight*fieldScale/2)
+            .attr("y2", fieldHeight*fieldScale/2)
+            .attr('class', 'field-lines')
+        
+        fieldSVG.append('line')
+            .attr("x1", (-fieldWidth*fieldScale/2)-fieldStroke)
+            .attr("x2", (-fieldWidth*fieldScale/2)-fieldStroke)
+            .attr("y1", -7.32*fieldScale/2)
+            .attr("y2", 7.32*fieldScale/2)
+            .attr('class', 'field-lines')
+
+        fieldSVG.append('line')
+            .attr("x1", (fieldWidth*fieldScale/2)+fieldStroke)
+            .attr("x2", (fieldWidth*fieldScale/2)+fieldStroke)
+            .attr("y1", -7.32*fieldScale/2)
+            .attr("y2", 7.32*fieldScale/2)
+            .attr('class', 'field-lines')
+
+        var z = d3.scaleSqrt()
+            .domain([0,1])
+            .range([1.6, 12]);
+
+        var xField = d3.scaleLinear()
+            .domain([0,100])
+            .range([-fieldWidth*fieldScale/2, fieldWidth*fieldScale/2]);
+
+        var yField = d3.scaleLinear()
+            .domain([0,100])
+            .range([-fieldHeight*fieldScale/2, fieldHeight*fieldScale/2]);
+        
+        var teamColor = d3.scaleOrdinal()
+            .domain(['Arsenal', 'Aston Villa', 'Bournemouth', 'Brighton', 'Burnley',
+                     'Chelsea', 'Crystal Palace', 'Everton', 'Leicester', 'Liverpool',
+                    'Manchester City', 'Manchester United', 'Newcastle United', 'Norwich', 'Sheff Utd', 
+                    'Southampton', 'Tottenham', 'Watford', 'West Ham', 'Wolverhampton Wanderers'])
+            .range(['#CD2E33', '#6E2342', '#404E4D', '#0075C4','#6E2342',
+                    '#1D587A', '#0075C4', '#1D587A', '#1D587A', '#C52233',
+                    '#4AABD0', '#C52233', '#404E4D', '#2F7F48', '#CD2E33',
+                    '#CD2E33', '#FAFAFF', '#F1C63A', '#6E2342', '#F1C63A'])
+    
+        var teamName = d3.scaleOrdinal()
+            .domain(['Arsenal', 'Aston Villa', 'Bournemouth', 'Brighton', 'Burnley', 
+                    'Chelsea', 'Crystal Palace', 'Everton', 'Leicester', 'Liverpool', 
+                    'Manchester City', 'Manchester United', 'Newcastle United', 'Norwich', 'Sheff Utd', 
+                    'Southampton', 'Tottenham', 'Watford', 'West Ham', 'Wolverhampton Wanderers'])
+            .range(['Arsenal', 'Villa', "B'mouth", 'Brighton', 'Burnley', 
+                    'Chelsea', 'Palace', 'Everton', 'Leicester', 'Liverpool', 
+                    'Man City', 'Man Utd', 'Newcastle', 'Norwich', 'Sheff Utd', 
+                    "S'mpton",'Spurs', 'Watford', 'West Ham', 'Wolves'])
+
+
+        var formatComma = d3.format(".2f")
+
+    d3.csv("xg_EPL_1920.csv", function(data) {
+
+        var games = d3.nest()
+            .key(function(d) {
+                d.game = d.homeTeam + '_' + d.awayTeam
+                return d.game;
+                })
+            .rollup(function(v) { return v.length; })
+            .entries(data);
+
+        game_title = games[0].key
+        
+        d3.select('#gameSelector')
+            .selectAll('a')
+            .data(games)
+            .enter()
+            .append("text")
+            .html(function(d) {
+                return "<a href='#'>" + d.key.replace(/_/g, ' - ') + "</a>"
+                })
+            .on('click', function(d) {
+                update_game(d.key)
+                game_title = d.key
+            })
+
+        
+        var gameText = fieldSVG.append("text")
+            .attr('x', 0)
+            .attr('y', -240)
+            .html('')
+
+        function update_game(gameName) {
+
+            var gameData = d3.nest()
+                .key(function(d) {
+                    d.game = d.homeTeam + '_' + d.awayTeam
+                    return d.game === gameName;})
+                .entries(data)
+                .filter(function(d) {
+                    if (d.key === 'true') {
+                        return d.values
+                    }
+                })
+
+            dataset = gameData[0].values
+
+            var homeData = dataset
+                .filter(function(d) {
+                    if (d.team === gameData[0].values[0].homeTeam)
+                    {
+                        return d
+                    }
+                })
+
+            var awayData = dataset
+                .filter(function(d) {
+                    if (d.team === gameData[0].values[0].awayTeam)
+                    {
+                        return d
+                    }
+                })            
+
+            var gameDate = (dataset[0].date)
+
+            var homeXGTotal = d3.nest()
+                .rollup(function(v) { return {
+                    total: d3.sum(v, function(d) { 
+                        if (d.homeTeam === d.team) {
+                            return d.xg;
+                    } else {
+                        return 0
+                    } })
+                }; })
+                .entries(dataset);
+            var awayXGTotal = d3.nest()
+                .rollup(function(v) { return {
+                    total: d3.sum(v, function(d) { 
+                        if (d.awayTeam === d.team) {
+                            return d.xg;
+                    } else {
+                        return 0
+                    } })
+                }; })
+                .entries(dataset);
+            var homeGoalsTotal = d3.nest()
+                .rollup(function(v) { return {
+                    total: d3.sum(v, function(d) { 
+                        if (d.homeTeam === d.team) {
+                            if (d.ownGoalYN === '1') {
+                                return 0
+                            } else {
+                                return d.goalYN;
+                            } 
+                    } else { if (d.ownGoalYN === '1') {
+                        return d.goalYN
+                    } else {
+                        return 0
+                    }
+                    } })
+                }; })
+                .entries(dataset);
+            var awayGoalsTotal = d3.nest()
+                .rollup(function(v) { return {
+                    total: d3.sum(v, function(d) { 
+                        if (d.awayTeam === d.team) {
+                            if (d.ownGoalYN === '1') {
+                                return 0
+                            } else {
+                                return d.goalYN;
+                            } 
+                    } else { if (d.ownGoalYN === '1') {
+                        return d.goalYN
+                    } else {
+                        return 0
+                    }
+                    } })
+                }; })
+                .entries(dataset);
+
+            gameText
+                .html(function() {
+                var x = d3.select(this).attr("x");//get the x position of the text
+                var gameDataLine1 = "<tspan x="+x+" dy='0em' dx='0em' class='gameDataHeader' text-anchor='middle'>:</tspan>"
+                var gameDataLine2 = "<tspan x="+x+" dy='0em' dx='-0.5em' class='gameDataHeader' text-anchor='end'>" + formatComma(homeXGTotal.total) + "</tspan>"
+                var gameDataLine3 = "<tspan x="+x+" dy='0em' dx='0.5em' class='gameDataHeader' text-anchor='start'>" + formatComma(awayXGTotal.total) + "</tspan>"
+                //var gameDataLine4 = "<tspan x="+x+" dy='1.4em' dx='0em' class='gameData' text-anchor='middle'>-</tspan>"
+                var gameDataLine5 = "<tspan x="+x+" dy='-0.3em' dx='-6em' class='gameData' id='homeTeamName' text-anchor='end'>" +  teamName(gameData[0].values[0].homeTeam).toUpperCase()  + "</tspan>"
+                var gameDataLine6 = "<tspan x="+x+" dy='0em' dx='6.2em' class='gameData' id='awayTeamName' text-anchor='start'>" + teamName(gameData[0].values[0].awayTeam).toUpperCase()  + "</tspan>"
+                var gameDataLine7 = "<tspan x="+x+" dy='1.8em' dx='0em' class='gameData' text-anchor='middle'>:</tspan>"
+                var gameDataLine8 = "<tspan x="+x+" dy='0em' dx='-0.7em' class='gameData' text-anchor='end'>( " + homeGoalsTotal.total + "</tspan>"
+                var gameDataLine9 = "<tspan x="+x+" dy='0em' dx='0.7em' class='gameData' text-anchor='start'>" + awayGoalsTotal.total + " )</tspan>"
+                var gameDataLine10 = "<tspan x="+x+" dy='1.6em' dx='0em' class='gameDataDate' text-anchor='middle'>" + gameDate.replace(/-/g, ' - ') + "</tspan>"
+                return gameDataLine1 + gameDataLine2 + gameDataLine3 + gameDataLine5 + gameDataLine6 + gameDataLine7 + gameDataLine8 + gameDataLine9 + gameDataLine10
+            });
+
+        var shotsHome = fieldSVG.selectAll('circle.shotsHome').data(homeData)
+        var shotsAway = fieldSVG.selectAll('circle.shotsAway').data(awayData)
+
+        shotsHome.exit()
+            .transition()
+            .duration(500)
+            .attrTween("r", function(d) {
+                var i = d3.interpolate(z(d.xg), 0.1)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .attrTween("fill-opacity", function() {
+                var i = d3.interpolate(1, 0)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .attrTween("stroke-opacity", function() {
+                var i = d3.interpolate(1, 0)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .remove()
+        
+        shotsAway.exit()
+            .transition()
+            .duration(500)
+            .attrTween("r", function(d) {
+                var i = d3.interpolate(z(d.xg), 0.1)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .attrTween("fill-opacity", function() {
+                var i = d3.interpolate(1, 0)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .attrTween("stroke-opacity", function() {
+                var i = d3.interpolate(1, 0)
+                return function(t) { 
+                    return i(t);           
+                }})
+            .remove()
+
+        shotsHome
+            .enter()
+            .append('circle')
+            .classed('shotsHome',true)
+            .attr("r", 0.1)
+            .attr("cx", function(d) {
+                if (d.team === d.homeTeam) {
+                    return xField(d.x)
+                } else {
+                    return xField(100 - d.x)
+                }})
+            .attr("cy", function(d) {
+                if (d.team === d.homeTeam) {
+                    return yField(d.y)
+                } else {
+                    return yField(100 - d.y)
+                }})
+            .style("fill", function(d) {
+                return teamColor(d.team)
+            })
+            .on("mouseover", function(d) {shotMouseOver(d)})
+            .on("mouseout", shotMouseOut)
+            .merge(shotsHome)
+            .transition()
+            .duration(1000)
+            .attr("r", function(d) {return z(d.xg)})
+            .style("fill", function(d) {
+                return teamColor(d.team)
+            })
+            .attr("cx", function(d) {
+                if (d.team === d.homeTeam) {
+                    return xField(d.x)
+                } else {
+                    return xField(100 - d.x)
+                }})
+            .attr("cy", function(d) {
+                if (d.team === d.homeTeam) {
+                    return yField(d.y)
+                } else {
+                    return yField(100 - d.y)
+                }})
+            .style("fill-opacity", function(d) {
+                if (d.goalYN === '1') {
+                    return 1
+                } else {
+                    return 0.7
+                }}) 
+            .style("stroke", function(d) {
+                if (d.goalYN === '1') {
+                    return "#121619"
+                } else {
+                    return "#404E4D"
+                }})  
+
+        shotsAway
+            .enter()
+            .append('circle')
+            .classed('shotsAway',true)
+            .attr("r", 0.1)
+            .attr("cx", function(d) {
+                if (d.team === d.homeTeam) {
+                    return xField(d.x)
+                } else {
+                    return xField(100 - d.x)
+                }})
+            .attr("cy", function(d) {
+                if (d.team === d.homeTeam) {
+                    return yField(d.y)
+                } else {
+                    return yField(100 - d.y)
+                }})
+            .style("fill", function(d) {
+                return teamColor(d.team)
+            })
+            .on("mouseover", function(d) {shotMouseOver(d)})
+            .on("mouseout", shotMouseOut)
+            .merge(shotsAway)
+            .transition()
+            .duration(1000)
+            .attr("r", function(d) {return z(d.xg)})
+            .style("fill", function(d) {
+                return teamColor(d.team)
+            })
+            .attr("cx", function(d) {
+                if (d.team === d.homeTeam) {
+                    return xField(d.x)
+                } else {
+                    return xField(100 - d.x)
+                }})
+            .attr("cy", function(d) {
+                if (d.team === d.homeTeam) {
+                    return yField(d.y)
+                } else {
+                    return yField(100 - d.y)
+                }})  
+            .style("fill-opacity", function(d) {
+                if (d.goalYN === '1') {
+                    return 1
+                } else {
+                    return 0.7
+                }}) 
+            .style("stroke", function(d) {
+                if (d.goalYN === '1') {
+                    return "#121619"
+                } else {
+                    return "#404E4D"
+                }})  
+        
+        }
+        
+
+
+        function shotMouseOver(data) {
+            
+            var dummyHoverText = fieldSVG.append("text")
+                .attr("id", 'shot-mouse-over-dummy-text')
+                .attr('class', 'shot-mouse-over')
+                .attr("x", function() {
+                    if (data.team === data.homeTeam) {
+                        return xField(data.x)
+                    } else {
+                        return xField(100 - data.x)
+                    }})
+                .attr("y", function() {
+                    if (data.team === data.homeTeam) {
+                        return yField(data.y)
+                    } else {
+                        return yField(100 - data.y)
+                    }})
+                .attr("dy", function() {return -z(data.xg)-5})
+                .attr('fill-opacity', 1)
+                .text(function() {
+                    if (data.ownGoalYN === "1") {
+                        return "OG"
+                    } else {
+                        return formatComma(data.xg)
+                    }})
+                    
+                    
+            
+            var toolBox = fieldSVG.append('rect')
+                .attr("id", 'shot-mouse-over-box')
+                .attr("x", function() {
+                    if (data.team === data.homeTeam) {
+                        return xField(data.x)-dummyHoverText.node().getBoundingClientRect().width/2-3
+                    } else {
+                        return xField(100 - data.x)-dummyHoverText.node().getBoundingClientRect().width/2-3
+                    }})
+                .attr("y", function() {
+                    if (data.team === data.homeTeam) {
+                        return yField(data.y)-z(data.xg)-20
+                    } else {
+                        return yField(100 - data.y)-z(data.xg)-20
+                    }})
+                .attr("width", function() {return dummyHoverText.node().getBoundingClientRect().width + 6})
+                .attr("height", 18)
+                .style("fill", "faf0e6")
+                .attr('fill-opacity', 0.8)
+
+            var hoverText = fieldSVG.append("text")
+                .attr("id", 'shot-mouse-over-text')
+                .attr('class', 'shot-mouse-over')
+                .attr("x", function() {
+                    if (data.team === data.homeTeam) {
+                        return xField(data.x)
+                    } else {
+                        return xField(100 - data.x)
+                    }})
+                .attr("y", function() {
+                    if (data.team === data.homeTeam) {
+                        return yField(data.y)
+                    } else {
+                        return yField(100 - data.y)
+                    }})
+                .attr("dy", function() {return -z(data.xg)-5})
+                .attr('fill-opacity', 1)
+                .text(function() {
+                    if (data.ownGoalYN === "1") {
+                        return "OG"
+                    } else {
+                        return formatComma(data.xg)
+                    }})
+
+        }
+
+        function shotMouseOut() {
+        // Select text by id and then remove
+            d3.select("#shot-mouse-over-text").remove(); 
+            d3.select("#shot-mouse-over-dummy-text").remove();
+            d3.select("#shot-mouse-over-box").remove(); 
+        }
+
+        update_game(game_title)
+
+    });
+
+
+
+// Set-up the export button
+d3.select('#saveButton').on('click', function() {
+	var svgString = getSVGString(svg.node());
+    
+    svgString2Image( svgString, 3*width, 3*height, 'jpeg', save );
+    
+    
+    function save( dataBlob, filesize ){
+		saveAs( dataBlob, game_title.replace(/_/g, ' - ') + '.jpeg' );
+	}
+	 // passes Blob and filesize String to the callback
+
+
+});
+
+// Below are the functions that handle actual exporting:
+// getSVGString ( svgNode ) and svgString2Image( svgString, width, height, format, callback )
+function getSVGString( svgNode ) {
+	svgNode.setAttribute('xlink', 'http://www.w3.org/1999/xlink');
+	var cssStyleText = getCSSStyles( svgNode );
+	appendCSS( cssStyleText, svgNode );
+
+	var serializer = new XMLSerializer();
+	var svgString = serializer.serializeToString(svgNode);
+	svgString = svgString.replace(/(\w+)?:?xlink=/g, 'xmlns:xlink=');
+	svgString = svgString.replace(/NS\d+:href/g, 'xlink:href');
+    svgString = svgString.replace(/open_sansbold;/g, 'arial;')
+	return svgString;
+
+	function getCSSStyles( parentElement ) {
+		var selectorTextArr = [];
+
+		// Add Parent element Id and Classes to the list
+		selectorTextArr.push( '#'+parentElement.id );
+		for (var c = 0; c < parentElement.classList.length; c++)
+				if ( !contains('.'+parentElement.classList[c], selectorTextArr) )
+					selectorTextArr.push( '.'+parentElement.classList[c] );
+
+		// Add Children element Ids and Classes to the list
+		var nodes = parentElement.getElementsByTagName("*");
+		for (var i = 0; i < nodes.length; i++) {
+			var id = nodes[i].id;
+            
+			if ( !contains('#'+id, selectorTextArr) )
+				selectorTextArr.push( '#'+id );
+
+			var classes = nodes[i].classList;
+			for (var c = 0; c < classes.length; c++)
+				if ( !contains('.'+classes[c], selectorTextArr) )
+					selectorTextArr.push( '.'+classes[c] );
+		}
+		// Extract CSS Rules
+		var extractedCSSText = "";
+		for (var i = 0; i < document.styleSheets.length; i++) {
+			var s = document.styleSheets[i];
+            
+			
+			try {
+			    if(!s.cssRules) continue;
+			} catch( e ) {
+		    		if(e.name !== 'SecurityError') throw e;
+		    		continue;
+		    	}
+
+			var cssRules = s.cssRules;
+            
+            
+
+			for (var r = 0; r < cssRules.length; r++) {
+                
+				if ( contains( cssRules[r].selectorText, selectorTextArr ) )
+					extractedCSSText += cssRules[r].cssText;
+			}
+		}
+		
+        
+		return extractedCSSText;
+
+		function contains(str,arr) {
+			return arr.indexOf( str ) === -1 ? false : true;
+		}
+
+	}
+
+	function appendCSS( cssText, element ) {
+		var styleElement = document.createElement("style");
+		styleElement.setAttribute("type","text/css"); 
+		styleElement.innerHTML = cssText;
+		var refNode = element.hasChildNodes() ? element.children[0] : null;
+		element.insertBefore( styleElement, refNode );
+	}
+}
+
+
+function svgString2Image( svgString, width, height, format, callback ) {
+	var format = format ? format : 'png';
+    
+	var imgsrc = 'data:image/svg+xml;base64,'+ btoa( unescape( encodeURIComponent( svgString ) ) );
+
+	var canvas = document.createElement("canvas");
+	var context = canvas.getContext("2d");
+
+	canvas.width = width;
+	canvas.height = height;
+    
+	var image = new Image();
+
+	image.onload = function() {
+		context.clearRect ( 0, 0, width, height );
+		context.drawImage(image, 0, 0, width, height);
+
+		canvas.toBlob( function(blob) {
+			var filesize = Math.round( blob.length/1024 ) + ' KB';
+			if ( callback ) callback( blob, filesize );
+		});
+
+		
+	};
+
+		
+	
+    
+	image.src = imgsrc;
+    
+    }
+			
+		</script>
+	</body>
+</html>
