@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Data Visualization</title>
+        <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+        <script src="https://cdn.rawgit.com/eligrey/canvas-toBlob.js/f1a01896135ab378aa5c0118eadd81da55e698d8/canvas-toBlob.js"></script>
+	    <script src="https://cdn.rawgit.com/eligrey/FileSaver.js/e9d941381475b5df8b7d7691013401e171014e89/FileSaver.min.js"></script>
+
+		<style type="text/css">
+
+        body {background-color: None;}
+
+        .slidecontainer {
+            padding-left: 0px;
+        }
+
+        .slider {
+        -webkit-appearance: none;
+        display: inline-block;
+        
+        width: 244px;
+        height: 6px;
+        border-radius: 2px;  
+        background: #d3d3d3;
+        margin: 0 auto;
+        outline: none;
+        opacity: 0.8;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+        }
+
+        /* Mouse-over effects */
+        .slider:hover {
+        opacity: 1; /* Fully shown on mouse-over */
+        }
+
+        .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 8px;
+        height: 16px;
+        border-radius: 35%; 
+        background: #004C24;
+        cursor: pointer;
+        }
+
+       .slider::-moz-range-thumb {
+        width: 8px;
+        height: 16px;
+        border-radius: 35%; 
+        background: #004C24;
+        cursor: pointer;
+        }
+
+        .step-button {
+            cursor: pointer;
+        }
+
+
+
+    .track,
+    .track-inset,
+    .track-overlay {
+      
+    }
+
+    .slider {
+      stroke: #d3d3d3;
+
+    }
+
+    .track-inset {
+      stroke: #d3d3d3;
+      stroke-width: 8px;
+    }
+
+    .track-overlay {
+      pointer-events: stroke;
+      stroke-width: 20px;
+      stroke: transparent;
+      cursor: pointer;
+    }
+
+    .handle {
+      fill: black;
+      stroke: #000;
+      stroke-opacity: 0.5;
+      stroke-width: 0px;
+    }
+
+    .overlays {
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .tenor-line {
+        fill: none;
+        stroke: black;
+        stroke-width: 3px;
+    }
+
+    .chart-title {
+            display: inline-block;
+            width: 34px;
+            font-family: "arial";
+            font-weight: bold;
+            font-size: 22px;
+            color: #004C24;
+    }
+
+    .chart-title-subtext {
+            display: inline-block;
+            font-family: "arial";
+            font-size: 12px;
+            color: #004C24;
+    }
+
+    .mouse-over-text {
+            font-family: "arial";
+            font-size: 12px;
+            color: #004C24;
+            
+
+    }
+
+    .axis-title {
+
+    }
+
+    .slider-label {
+        display: inline-block;
+        width: 34px;
+        text-align: center;
+        font-family: "arial";
+        font-size: 12px;
+        color: black;
+        letter-spacing: 1px;
+    }
+
+    #buttonContainer {
+        padding-left: 230px;
+
+    }
+
+
+
+
+		</style>
+	</head>
+
+	<body>
+
+        <div id="DataViz"></div>
+
+        <div id="buttonContainer">
+        <input type="date" name="startDateInput" id="startDateInput" value="2012-01-01">
+        <input type="date" name="endDateInput" id="endDateInput" value="2014-01-01">
+        <button id="draw-button">Draw</button>
+        <button id="play-button">Play</button>
+        <button id="save-button">Save Chart</button>
+        <div id="slideContainerSVG"></div>
+        </div>
+
+        
+
+		<script type="text/javascript">
+
+            var width = 940,
+                height = 500,
+                h_margin = 100,
+                left_padding = -376
+                top_padding = -333.5
+
+        start_date = d3.select('#startDateInput').node().value
+        end_date = d3.select('#endDateInput').node().value
+
+        parseDate = d3.utcParse("%Y/%m/%d")
+        parseInputDate = d3.utcParse("%Y-%m-%d")
+        parseIntoDate = d3.timeFormat("%Y-%m-%d")
+    
+        var svg = d3.select('#DataViz').append('svg')
+                .attr('width', width)
+                .attr('height',height)
+
+         var chartSVG = svg.append('g')
+                .attr("transform", "translate(" + width/2 + "," + height*1/5 + ")"); 
+
+        chartTitle = chartSVG.append('text')
+            .attr("x", -width/2+100)
+            .attr("y", -44)
+            .attr("class", "chart-title")
+            .text(function() {
+                return start_date + ' UST Spot Curve'
+            })
+
+        chartSVG.append('text')
+            .attr("x", -width/2+100)
+            .attr("dx", "0em")
+            .attr("dy", "-2.2em")
+            .attr("class", "chart-title-subtext")
+            .text('A description of the data visualization. Possibly include the date.')
+
+
+        
+        d3.csv("api_data.csv", function(data) {
+
+
+        absMinDate = parseInputDate(data[0].Date)
+        absMaxDate = parseInputDate(data[data.length-1].Date)
+
+        var entire_dataset = d3.nest()
+        .key(function(d) {
+            //d.Date = parseDate(d.Date)
+            d.Date = parseInputDate(d.Date)
+            d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                    +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                    +d.T10Y, +d.T20Y, +d.T30Y]
+            d.T1M = +d.T1M
+            d.T3M = +d.T3M
+            d.T6M = +d.T6M
+            d.T1Y = +d.T1Y
+            d.T2Y = +d.T2Y
+            d.T3Y = +d.T3Y
+            d.T5Y = +d.T5Y
+            d.T7Y = +d.T7Y
+            d.T10Y = +d.T10Y
+            d.T20Y = +d.T20Y
+            d.T30Y = +d.T30Y
+            if (d.Date >= (absMinDate)) {
+                if (d.Date <= (absMaxDate)) {
+                    return d.Date;
+                }
+            }
+            })
+        .entries(data);
+
+        
+
+
+
+
+        d3.select('#startDateInput')
+            .attr('min', parseIntoDate(absMinDate))
+            .attr('max', parseIntoDate(absMaxDate))
+            .attr('value', parseIntoDate(absMinDate))
+
+        d3.select('#endDateInput')
+            .attr('min', parseIntoDate(absMinDate))
+            .attr('max', parseIntoDate(absMaxDate))
+            .attr('value', parseIntoDate(absMaxDate))
+
+
+        var playButton = d3.select("#play-button");
+        var drawButton = d3.select("#draw-button");
+
+        var targetValue = width*4/10
+
+        var labels = ["T1M", "T3M", "T6M", "T1Y", "T2Y", "T3Y",
+                        "T5Y", "T7Y", "T10Y", "T20Y", "T30Y"]
+
+        var formatLabels = function(d, i) {
+            return labels[i]
+        }
+
+        drawButton
+            .on("click", function() {
+                start = parseInputDate(d3.select('#startDateInput').node().value)
+                end = parseInputDate(d3.select('#endDateInput').node().value)
+                if (start < end && start >= absMinDate && end <= absMaxDate) {
+                    draw(start, end)
+                }
+                
+            })
+
+        Date.prototype.addDays = function(days) {
+        var date = new Date(this.valueOf());
+        date.setDate(date.getDate() + days);
+        return date;
+        }
+
+
+        var maxVal = d3.max(entire_dataset, function(d) {
+            if (d.key === "undefined") {
+            } else {
+                return d3.max(d.values[0].val )
+            }});
+
+
+        var minVal = d3.min(entire_dataset, function(d) {
+            if (d.key === "undefined") {
+            } else {
+                return d3.min(d.values[0].val)
+            }});
+
+        var xScale = d3.scaleLinear()
+            .domain([0, (data.columns.length - 1)])
+            .range([-width*4/10, width*4/10]);
+
+        var yScale= d3.scaleLinear()
+            .domain([minVal, maxVal])
+            .range([height*2/3, 0]);
+
+        var xAxis = d3.axisBottom()
+                .scale(xScale)
+                .tickFormat(formatLabels);
+
+        var yAxis = d3.axisLeft()
+                .scale(yScale)
+                .ticks(10)
+    
+        chartSVG.append('g')
+            .attr("class", "myYaxis")
+            .attr("transform", "translate(" + left_padding + ",0)")
+            .call(yAxis)
+              .append("text")
+            .attr("class", "axis-title")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .attr("fill", "#5D6971")
+            .text("Rate");
+
+        chartSVG.append('g')
+            .attr("class", "myXaxis")
+            .attr("transform", "translate(0," + (0 - top_padding) + ")")
+            .call(xAxis)
+                .append("text")
+                .attr("class", "axis-title")
+            .attr("x", 350)
+            .attr("dy", "-.61em")
+            .attr("dx", ".71em")
+            .style("text-anchor", "end")
+            .attr("fill", "#5D6971")
+            .text("Tenor");
+
+    
+
+        // Slider Setup:
+
+        var moving = false;
+        var currentValue = start_date;
+        var targetValue = width;
+
+        var sliderSVG = d3.select("#slideContainerSVG").append("svg")
+            .attr('width',width)
+            .attr('height',40)
+            .append("g")
+            .attr("transform", "translate(" + width/4 + "," + 30 + ")");
+
+        // need to reskin
+        var button = sliderSVG
+            .append("path")
+            .attr('id', 'step-button')
+            .attr('class', 'play-button')
+            .attr("d", "M10 10 L10 28 L28 20 Z")
+            .attr("transform", "translate("+ -220 +","+ -20 +")");
+
+        var sliderStartLabel = sliderSVG
+            .append('g')
+            .append('text')
+            .text(parseIntoDate(absMinDate).replace(/-/g, '/'))
+            .attr('class', 'slider-label')
+            .attr("dx", "-15.5em")
+            .attr("dy", "0.25em")
+
+        var sliderEndLabel = sliderSVG
+            .append('g')
+            .append('text')
+            .text(parseIntoDate(absMaxDate).replace(/-/g, '/'))
+            .attr('class', 'slider-label')
+            .attr("dx", "10.7em")
+            .attr("dy", "0.25em")
+
+
+        var sliderX = d3.scaleLinear()
+            .domain([1, entire_dataset.length-1])
+            .range([-115, 115])
+            .clamp(true);
+
+        var slider = sliderSVG.append("g")
+            .attr("class", "slider")
+
+        slider.append("line")
+            .attr("class", "track")
+            .attr("x1", sliderX.range()[0])
+            .attr("x2", sliderX.range()[1]+8)
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-inset")
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-overlay")
+            .call(d3.drag()
+            .on("start.interrupt", function() { slider.interrupt(); })
+            .on("start drag", function() {
+                currentValue = Math.round(sliderX.invert(d3.event.x))
+                update_date(currentValue)
+           
+            })
+        );
+        
+        var handle = slider.insert("rect", ".track-overlay")
+            .attr("class", "handle")
+            .attr("y", "-8")
+            .attr("x", sliderX(parseInputDate(start_date)))
+            .attr("width", "8px")
+            .attr("height", "16px")
+            .attr("rx",3)
+            .attr("ry",3)
+
+
+
+        var line_constructor = d3.line()
+                .x(function(d, i) { return xScale((i)); })
+                .y(function(d) { return yScale((d)); })
+
+        var tenor_line = chartSVG.append("path")
+           .datum(entire_dataset[1].values[0].val)
+           .attr("class", "tenor-line")
+           .attr("d", line_constructor);
+
+        // overlays for the hover info
+        var overlays = chartSVG.selectAll('overlays')
+            .data(entire_dataset[1].values[0].val)
+            .enter()
+            .append("circle")
+            .attr("class", "overlays")
+            .attr("r", 30)
+            .attr("cx", function(d, i) {
+                return xScale(i)
+            })
+            .attr("cy",  function(d) {
+                return yScale(d)
+            })
+            .on("mouseover", function(d, i) {mouseOver(d, i)})
+            .on("mouseout", mouseOut)
+
+
+        function draw(start, end) {
+            
+
+        dataset = d3.nest()
+            .key(function(d) {
+                //d.Date = parseDate(d.Date)
+                d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                        +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                        +d.T10Y, +d.T20Y, +d.T30Y]
+                d.T1M = +d.T1M
+                d.T3M = +d.T3M
+                d.T6M = +d.T6M
+                d.T1Y = +d.T1Y
+                d.T2Y = +d.T2Y
+                d.T3Y = +d.T3Y
+                d.T5Y = +d.T5Y
+                d.T7Y = +d.T7Y
+                d.T10Y = +d.T10Y
+                d.T20Y = +d.T20Y
+                d.T30Y = +d.T30Y
+                if (d.Date >= (start)) {
+                    if (d.Date <= (end)) {
+                        return d.Date;
+                    }
+                }
+                })
+        .entries(data);
+
+
+            sliderStartLabel.text(parseIntoDate(start).replace(/-/g, '/'))
+            sliderEndLabel.text(parseIntoDate(end).replace(/-/g, '/'))
+
+            var maxVal = d3.max(dataset, function(d) {
+                if (d.key === "undefined") {
+                }
+                else {
+                    return d3.max(d.values[0].val )
+                }
+                });
+
+    
+            var minVal = d3.min(dataset, function(d) {
+                if (d.key === "undefined") {
+                }
+                else {
+                    return d3.min(d.values[0].val)
+                }
+                });
+
+        yScale.domain([minVal, maxVal])
+
+        sliderX.domain([1, dataset.length-1])
+
+        slider.attr("x2", sliderX.range()[1]+8)
+
+        
+
+        var yAxis = d3.axisLeft()
+                .scale(yScale)
+                .ticks(10)
+
+        chartSVG.selectAll(".myYaxis").transition()
+            .duration(3000)
+            .call(yAxis);
+
+
+        update_date(1, dataset)
+
+
+        }
+
+
+
+        playButton
+            .on("click", function() {
+            var button = d3.select(this);
+            if (button.text() == "Pause") {
+                moving = false;
+                clearInterval(timer);
+            // timer = 0;
+                button.text("Play");
+                } else {
+                moving = true;
+                timer = setInterval(step, 100);
+                button.text("Pause");
+            }
+        })
+        
+        function update_date(new_index, entire_dataset) {
+
+            chartTitle.text(function() {
+                //console.log(dataset[new_index].values[0])
+                return parseIntoDate(dataset[new_index].values[0].Date) + ' UST Spot Curve'
+            })
+
+            mouseOut()
+
+            globalIndex = new_index
+
+            handle.attr("x", function() {
+                return sliderX(new_index)})
+
+          // Give these new data to update line
+            tenor_line
+            .datum(dataset[new_index].values[0].val)
+            .transition()
+            .duration(150)
+            .ease(d3.easeLinear)
+            .attr("d", line_constructor);
+
+            overlays.data(dataset[new_index].values[0].val)
+                .enter()
+                .merge(overlays)
+                .transition()
+                .duration(150)
+                .attr("cy",  function(d) {
+                    return yScale(d);
+                })
+
+
+
+
+        }
+
+
+        var stepButton = d3.select('#step-button')
+            .on("click", function() {
+                step()
+            })
+
+
+        draw(absMinDate, absMaxDate)
+
+        function step() {
+            if (globalIndex < dataset.length-1) {
+                update_date(globalIndex + 1, dataset)
+                }}
+
+        function mouseOver(d, i) {
+
+            var mouseOverDummyText = chartSVG.append("text")
+                .attr("id", "mouse-over-dummy-text")
+                .attr("class", "mouse-over-text")
+                .attr("x", xScale(i))
+                .attr("y", yScale(d))
+                .attr("dy", "-1.7em")
+                .attr("dx", "0.5em")
+                .style("pointer-events", "none")
+                .attr("opacity","0")
+                .text(d)
+
+            var mouseOverTextBox = chartSVG.append("rect")
+                .attr("id", "mouse-over-text-box")
+                .attr("class", "mouse-over-text-box")
+                .attr("x", xScale(i) )
+                .attr("y", yScale(d) -35)
+                .attr("width", function() {
+                    return mouseOverDummyText.node().getBoundingClientRect().width + 14
+                })
+                .attr("height", function() {
+                    return mouseOverDummyText.node().getBoundingClientRect().height + 8
+                })
+                .style("fill", "white")
+                .style("stroke", "black")
+                .style("stroke-width",0.5)
+
+            var mouseOverText = chartSVG.append("text")
+                .attr("id", "mouse-over-text")
+                .attr("class", "mouse-over-text")
+                .attr("x", xScale(i))
+                .attr("y", yScale(d))
+                .attr("dy", "-1.7em")
+                .attr("dx", "0.5em")
+                .style("pointer-events", "none")
+                .text(d)
+
+            
+            
+            var mouseOverLine = chartSVG.append("line")
+                .attr("id", "mouse-over-line")
+                .attr("class", "mouse-over-line")
+                .attr("x1", xScale(i))
+                .attr("x2", xScale(i))
+                .attr("y1", -top_padding)
+                .attr("y2", yScale(d))
+                .style("stroke-dasharray", "3, 3")
+                .style("stroke", "black")
+        }
+
+        function mouseOut() {
+            d3.select('#mouse-over-text').remove()
+            d3.select('#mouse-over-text-box').remove()
+            d3.select('#mouse-over-dummy-text').remove()
+            d3.select('#mouse-over-line').remove()
+        }
+
+
+
+
+        
+        
+        })
+
+// Set-up the export button
+d3.select('#save-button').on('click', function() {
+	var svgString = getSVGString(svg.node());
+
+    svgString2Image( svgString, width, height, 'png', save );
+    
+    
+    function save( dataBlob, filesize ){
+        
+		saveAs( dataBlob, 'chart.png' );
+	}
+	 // passes Blob and filesize String to the callback
+
+
+});
+
+// Below are the functions that handle actual exporting:
+// getSVGString ( svgNode ) and svgString2Image( svgString, width, height, format, callback )
+function getSVGString( svgNode ) {
+	svgNode.setAttribute('xlink', 'http://www.w3.org/1999/xlink');
+	var cssStyleText = getCSSStyles( svgNode );
+	appendCSS( cssStyleText, svgNode );
+
+	var serializer = new XMLSerializer();
+	var svgString = serializer.serializeToString(svgNode);
+	svgString = svgString.replace(/(\w+)?:?xlink=/g, 'xmlns:xlink=');
+	svgString = svgString.replace(/NS\d+:href/g, 'xlink:href');
+
+	return svgString;
+
+	function getCSSStyles( parentElement ) {
+		var selectorTextArr = [];
+
+		// Add Parent element Id and Classes to the list
+		selectorTextArr.push( '#'+parentElement.id );
+		for (var c = 0; c < parentElement.classList.length; c++)
+				if ( !contains('.'+parentElement.classList[c], selectorTextArr) )
+					selectorTextArr.push( '.'+parentElement.classList[c] );
+
+		// Add Children element Ids and Classes to the list
+		var nodes = parentElement.getElementsByTagName("*");
+		for (var i = 0; i < nodes.length; i++) {
+			var id = nodes[i].id;
+            
+			if ( !contains('#'+id, selectorTextArr) )
+				selectorTextArr.push( '#'+id );
+
+			var classes = nodes[i].classList;
+			for (var c = 0; c < classes.length; c++)
+				if ( !contains('.'+classes[c], selectorTextArr) )
+					selectorTextArr.push( '.'+classes[c] );
+		}
+		// Extract CSS Rules
+		var extractedCSSText = "";
+		for (var i = 0; i < document.styleSheets.length; i++) {
+			var s = document.styleSheets[i];
+            
+			
+			try {
+			    if(!s.cssRules) continue;
+			} catch( e ) {
+		    		if(e.name !== 'SecurityError') throw e;
+		    		continue;
+		    	}
+
+			var cssRules = s.cssRules;
+            
+            
+
+			for (var r = 0; r < cssRules.length; r++) {
+                
+				if ( contains( cssRules[r].selectorText, selectorTextArr ) )
+					extractedCSSText += cssRules[r].cssText;
+			}
+		}
+		
+        
+		return extractedCSSText;
+
+		function contains(str,arr) {
+			return arr.indexOf( str ) === -1 ? false : true;
+		}
+
+	}
+
+	function appendCSS( cssText, element ) {
+		var styleElement = document.createElement("style");
+		styleElement.setAttribute("type","text/css"); 
+		styleElement.innerHTML = cssText;
+		var refNode = element.hasChildNodes() ? element.children[0] : null;
+		element.insertBefore( styleElement, refNode );
+	}
+}
+
+
+function svgString2Image( svgString, width, height, format, callback ) {
+    
+	var format = format ? format : 'png';
+    
+	var imgsrc = 'data:image/svg+xml;base64,'+ btoa( unescape( encodeURIComponent( svgString ) ) );
+
+	var canvas = document.createElement("canvas");
+	var context = canvas.getContext("2d");
+
+	canvas.width = width;
+	canvas.height = height;
+    
+	var image = new Image();
+	image.onload = function() {
+		context.clearRect ( 0, 0, width, height );
+		context.drawImage(image, 0, 0, width, height);
+
+		canvas.toBlob( function(blob) {
+			var filesize = Math.round( blob.length/1024 ) + ' KB';
+			if ( callback ) callback( blob, filesize );
+		});	
+	};
+
+	image.src = imgsrc;
+    
+    }
+
+
+
+
+
+
+        
+
+
+
+
+
+            
+
+ 
+			
+		</script>
+	</body>
+</html>
