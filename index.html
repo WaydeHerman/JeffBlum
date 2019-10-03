@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Data Visualization</title>
+        <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+        <script src="https://cdn.rawgit.com/eligrey/canvas-toBlob.js/f1a01896135ab378aa5c0118eadd81da55e698d8/canvas-toBlob.js"></script>
+	    <script src="https://cdn.rawgit.com/eligrey/FileSaver.js/e9d941381475b5df8b7d7691013401e171014e89/FileSaver.min.js"></script>
+
+		<style type="text/css">
+
+        body {background-color: #2A383E;}
+
+        /* Slider */
+        .slidecontainer {
+            padding-left: 0px;
+        }
+
+        .slider {
+        -webkit-appearance: none;
+        display: inline-block;
+        width: 244px;
+        height: 6px;
+        border-radius: 12px;  
+        background: #C4C8CA;
+        margin: 0 auto;
+        outline: none;
+        opacity: 0.8;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+        }
+
+        .slider:hover {
+        opacity: 1; /* Fully shown on mouse-over */
+        }
+
+        .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 8px;
+        height: 16px;
+        background: #C4C8CA;
+        cursor: pointer;
+        }
+
+       .slider::-moz-range-thumb {
+        width: 8px;
+        height: 16px;
+        background: #C4C8CA;
+        cursor: pointer;
+        }
+
+        .track-inset {
+        stroke: #C4C8CA;
+        stroke-width: 4px;
+        }
+
+        .track-overlay {
+        pointer-events: stroke;
+        stroke-width: 20px;
+        stroke: transparent;
+        cursor: pointer;
+        }
+
+        .handle {
+        fill: #E76F63;
+        stroke: #E76F63;
+        stroke-opacity: 0.5;
+        stroke-width: 0px;
+        }
+
+        .slider-label {
+            display: inline-block;
+            width: 34px;
+            text-align: center;
+            font-family: "arial";
+            font-size: 12px;
+            fill: #FCFCFC;
+            letter-spacing: 1px;
+        }
+
+        /* Chart title & Subtitle */
+        .chart-title {
+                display: inline-block;
+                width: 34px;
+                font-family: "Arial";
+                font-weight: bold;
+                font-size: 22px;
+                fill: #FCFCFC;
+        }
+
+        .chart-title-subtext {
+                display: inline-block;
+                font-family: "arial";
+                font-size: 12px;
+                fill: #FCFCFC;
+        }
+
+        .myXaxis {
+            stroke: #FCFCFC;
+            stroke-width: 0.5px;
+        }
+
+        .myYaxis {
+            stroke: #FCFCFC;
+            stroke-width: 0.5px;
+        }
+
+        .myXaxis text {
+            fill: #FCFCFC;
+            stroke-width: 0px;
+        }
+
+        .myYaxis text {
+            fill: #FCFCFC;
+            stroke-width: 0px;
+        }
+
+        .myYaxis line {
+            stroke: #FCFCFC;
+        }
+
+        .myYaxis path {
+            stroke: #FCFCFC;
+        }
+
+        .myXaxis path {
+            stroke: #FCFCFC;
+        }
+
+        .myXaxis line {
+            stroke: #FCFCFC;
+        }
+
+        /* Buttons */
+        .step-button {
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        .step-button:hover {
+            opacity: 1;
+        }
+
+        #button-container {
+            text-align: center;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        /* Chart */
+        .tenor-line {
+            fill: none;
+            stroke: #E76F63;
+            stroke-width: 2px;
+        }
+
+        .overlays {
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .mouse-over-text {
+                font-family: "arial";
+                font-size: 12px;
+                fill: #2A383E;
+        }
+
+
+        .menu-button {
+            background-color: #C4C8CA;
+            color: #2A383E;
+            padding: 6px;
+            margin: 2px;
+            margin-top: 5px;
+            font-family: "arial";
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .menu-button:hover {
+            background-color: #E76F63;
+        }
+
+        .menu-button-date {
+            background-color: #C4C8CA;
+            color: #2A383E;
+            padding: 4px;
+            margin: 2px;
+            font-family: "arial";
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .menu-button-date:hover {
+            background-color: #E76F63;
+        }
+
+        .play-button {
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+
+        .month-day-selection-button {
+            margin-left: 10px;
+        }
+
+        #slideContainerSVG {
+            text-align: center;
+        }
+
+        #DataViz {
+            text-align: center;
+        }
+
+		</style>
+	</head>
+
+	<body>
+
+        <div id="DataViz"></div>
+
+        <div id="button-container">
+        <input class="menu-button-date" type="date" name="startDateInput" id="startDateInput" value="2001-07-31">
+        <input class="menu-button-date" type="date" name="endDateInput" id="endDateInput" value="2014-01-01">
+        <button class="menu-button draw-button" id="draw-button">Draw</button>
+        <button class="menu-button month-day-selection-button" id="month-day-selection-button">Month</button>
+        <button class="menu-button graph-selection-button" id="graph-selection-button">Graph</button>
+        <button class="menu-button play-button" id="play-button">Play</button>
+        <button class="menu-button save-button" id="save-button">Save Chart</button>
+        </div>
+
+        <div id="slideContainerSVG"></div>
+
+        
+
+		<script type="text/javascript">
+
+            var width = 940,
+                height = 500,
+                h_margin = 100,
+                left_padding = -376
+                top_padding = -333.5
+
+        // set initial start and end date (not important)
+        start_date = d3.select('#startDateInput').node().value
+        end_date = d3.select('#endDateInput').node().value
+
+        // define functions to manipulate and formate dates
+        parseDate = d3.utcParse("%Y/%m/%d")
+        parseInputDate = d3.utcParse("%Y-%m-%d")
+        parseIntoDate = d3.timeFormat("%Y-%m-%d")
+        getMonthYear = d3.timeFormat("%Y-%m")
+    
+        // define svg and g, usually done together however for the save image function these mast be seperate
+        var svg = d3.select('#DataViz').append('svg')
+                .attr('width', width)
+                .attr('height',height)
+
+         var chartSVG = svg.append('g')
+                .attr("transform", "translate(" + width/2 + "," + height*1/5 + ")"); 
+
+        chartSVG.append('rect')
+            .attr("x", -width/2)
+            .attr("y", -height/5)
+            .attr("height", height)
+            .attr("width", width)
+            .attr("fill", '#2A383E')
+
+        // Chart title:
+        chartTitle = chartSVG.append('text')
+            .attr("x", -width/2+100)
+            .attr("y", -44)
+            .attr("class", "chart-title")
+            .text(function() {
+                return start_date + ' UST SPOT CURVE'
+            })
+
+        //chartSVG.append('text')
+            //.attr("x", -width/2+100)
+            //.attr("dx", "0em")
+            //.attr("dy", "-2.2em")
+            //.attr("class", "chart-title-subtext")
+            //.text('A description of the data visualization. Possibly include the date.')
+
+        // Load data
+        d3.csv("api_data.csv", function(data) {
+
+        var mode = 'day'
+
+        absMinDate = parseInputDate(data[0].Date)
+        absMaxDate = parseInputDate(data[data.length-1].Date)
+
+        var entire_dataset = d3.nest()
+        .key(function(d) {
+            d.Date = parseInputDate(d.Date)
+            d.T1M = +d.T1M
+            d.T3M = +d.T3M
+            d.T6M = +d.T6M
+            d.T1Y = +d.T1Y
+            d.T2Y = +d.T2Y
+            d.T3Y = +d.T3Y
+            d.T5Y = +d.T5Y
+            d.T7Y = +d.T7Y
+            d.T10Y = +d.T10Y
+            d.T20Y = +d.T20Y
+            d.T30Y = +d.T30Y
+            // workaround for missing T30 data:
+            if (d.Date >= parseInputDate('2002-02-09') && d.Date <= parseInputDate('2006-02-8')) {
+                d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                    +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                    +d.T10Y, +d.T20Y]
+            } else {
+                d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                    +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                    +d.T10Y, +d.T20Y, +d.T30Y]
+            }
+            return d.Date
+            })
+        .entries(data);
+
+        d3.select('#startDateInput')
+            .attr('min', parseIntoDate(absMinDate))
+            .attr('max', parseIntoDate(absMaxDate))
+            .attr('value', parseIntoDate(absMinDate))
+
+        d3.select('#endDateInput')
+            .attr('min', parseIntoDate(absMinDate))
+            .attr('max', parseIntoDate(absMaxDate))
+            .attr('value', parseIntoDate(absMaxDate))
+
+        var drawButton = d3.select("#draw-button");
+        var playButton = d3.select("#play-button");
+        var monthDaySelectionButton = d3.select("#month-day-selection-button");
+
+        var labels = ["T1M", "T3M", "T6M", "T1Y", "T2Y", "T3Y",
+                        "T5Y", "T7Y", "T10Y", "T20Y", "T30Y"]
+
+        var formatLabels = function(d, i) {
+            return labels[i]
+        }
+
+        drawButton
+            .on("click", function() {
+                start = parseInputDate(d3.select('#startDateInput').node().value)
+                end = parseInputDate(d3.select('#endDateInput').node().value)
+                if (start < end && start >= absMinDate && end <= absMaxDate) {
+                    draw(start, end, mode)
+                }
+                
+            })
+
+
+        var maxVal = d3.max(entire_dataset, function(d) {
+            if (d.key === "undefined") {
+            } else {
+                return d3.max(d.values[0].val )
+            }});
+
+
+        var minVal = d3.min(entire_dataset, function(d) {
+            if (d.key === "undefined") {
+            } else {
+                return d3.min(d.values[0].val)
+            }});
+
+        var xScale = d3.scaleLinear()
+            .domain([0, (data.columns.length - 1)])
+            .range([-width*4/10, width*4/10]);
+
+        var yScale= d3.scaleLinear()
+            .domain([minVal, maxVal])
+            .range([height*2/3, 0]);
+
+        var xAxis = d3.axisBottom()
+                .scale(xScale)
+                .tickFormat(formatLabels);
+
+        var yAxis = d3.axisLeft()
+                .scale(yScale)
+                .ticks(10)
+    
+        chartSVG.append('g')
+            .attr("class", "myYaxis")
+            .attr("transform", "translate(" + left_padding + ",0)")
+            .call(yAxis)
+              .append("text")
+            .attr("class", "axis-title")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .attr("fill", "#5D6971")
+            .text("Rate");
+
+        chartSVG.append('g')
+            .attr("class", "myXaxis")
+            .attr("transform", "translate(0," + (0 - top_padding) + ")")
+            .call(xAxis)
+                .append("text")
+                .attr("class", "axis-title")
+            .attr("x", 350)
+            .attr("dy", "-.61em")
+            .attr("dx", ".71em")
+            .style("text-anchor", "end")
+            .attr("fill", "#5D6971")
+            .text("Tenor");
+
+        // Slider Setup:
+
+        var moving = false;
+        var currentValue = start_date;
+
+        var sliderSVG = d3.select("#slideContainerSVG").append("svg")
+            .attr('width',width)
+            .attr('height',40)
+            .append("g")
+            .attr("transform", "translate(" + width/2 + "," + 30 + ")");
+
+        var stepFwrdButton = sliderSVG
+            .append("path")
+            .attr('id', 'step-fwrd-button')
+            .attr('class', 'step-button')
+            .attr("d", "M10 10 L10 28 L28 20 Z")
+            .attr("transform", "translate("+ -220 +","+ -20 +")");
+
+        var stepBwrdButton = sliderSVG
+            .append("path")
+            .attr('id', 'step-bwrd-button')
+            .attr('class', 'step-button')
+            .attr("d", "M0 10 L0 28 L-18 20 Z")
+            .attr("transform", "translate("+ -217 +","+ -20 +")");
+
+        var sliderStartLabel = sliderSVG
+            .append('g')
+            .append('text')
+            .text(parseIntoDate(absMinDate).replace(/-/g, '/'))
+            .attr('class', 'slider-label')
+            .attr("dx", "-15.6em")
+            .attr("dy", "0.25em")
+
+        var sliderEndLabel = sliderSVG
+            .append('g')
+            .append('text')
+            .text(parseIntoDate(absMaxDate).replace(/-/g, '/'))
+            .attr('class', 'slider-label')
+            .attr("dx", "10.7em")
+            .attr("dy", "0.25em")
+
+
+        var sliderX = d3.scaleLinear()
+            .domain([0, entire_dataset.length-1])
+            .range([-115, 115])
+            .clamp(true);
+
+        var slider = sliderSVG.append("g")
+            .attr("class", "slider")
+
+        slider.append("line")
+            .attr("class", "track")
+            .attr("x1", sliderX.range()[0])
+            .attr("x2", sliderX.range()[1]+8)
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-inset")
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+            .attr("class", "track-overlay")
+            .call(d3.drag()
+            .on("start.interrupt", function() { slider.interrupt(); })
+            .on("start drag", function() {
+                currentValue = Math.round(sliderX.invert(d3.event.x))
+                update_date(currentValue)
+           
+            })
+        );
+        
+        var handle = slider.insert("rect", ".track-overlay")
+            .attr("class", "handle")
+            .attr("y", "-8")
+            .attr("x", sliderX(parseInputDate(start_date)))
+            .attr("width", "8px")
+            .attr("height", "16px")
+
+        var line_constructor = d3.line()
+                .x(function(d, i) { return xScale((i)); })
+                .y(function(d) { return yScale((d)); })
+
+        var tenor_line = chartSVG.append("path")
+           .datum(entire_dataset[0].values[0].val)
+           .attr("class", "tenor-line")
+           .attr("d", line_constructor);
+
+        // overlays for the hover info
+        var overlays = chartSVG.selectAll('overlays')
+            .data(entire_dataset[0].values[0].val)
+            .enter()
+            .append("circle")
+            .attr("class", "overlays")
+            .attr("r", 30)
+            .attr("cx", function(d, i) {
+                return xScale(i)
+            })
+            .attr("cy",  function(d) {
+                return yScale(d)
+            })
+            .on("mouseover", function(d, i) {
+                if ((entire_dataset[globalIndex].values[0].Date) >= parseInputDate('2002-02-09') && (entire_dataset[globalIndex].values[0].Date) <= parseInputDate('2006-02-8')) {
+                    if (i !== 10) {
+                        mouseOver(d, i)
+                }} else {
+                    mouseOver(d, i)
+                }})
+            .on("mouseout", mouseOut)
+
+
+        function draw(start, end, mode) {
+            
+        entire_dataset = d3.nest()
+            .key(function(d) {
+                d.T1M = +d.T1M
+                d.T3M = +d.T3M
+                d.T6M = +d.T6M
+                d.T1Y = +d.T1Y
+                d.T2Y = +d.T2Y
+                d.T3Y = +d.T3Y
+                d.T5Y = +d.T5Y
+                d.T7Y = +d.T7Y
+                d.T10Y = +d.T10Y
+                d.T20Y = +d.T20Y
+                d.T30Y = +d.T30Y
+                if (d.Date >= parseInputDate('2002-02-09') && d.Date <= parseInputDate('2006-02-8')) {
+                    d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                        +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                        +d.T10Y, +d.T20Y]
+                } else {
+                    d.val = [+d.T1M, +d.T3M, +d.T6M, +d.T1Y, 
+                        +d.T2Y, +d.T3Y, +d.T5Y, +d.T7Y, 
+                        +d.T10Y, +d.T20Y, +d.T30Y]
+                }
+                if (d.Date >= (start)) {
+                    if (d.Date <= (end)) {
+                        if (mode === 'Month') {
+                            return getMonthYear(d.Date);
+                        } else {
+                            return d.Date
+                        }
+                    }
+                }
+                })
+        .entries(data);
+
+        dataset = entire_dataset.filter(function(d) {return d.key !== 'undefined'})  
+
+        globalStart = (dataset[0].values[dataset[0].values.length-1].Date)
+        globalEnd = (dataset[dataset.length-1].values[dataset[dataset.length-1].values.length-1].Date)
+
+        sliderStartLabel.text(parseIntoDate(globalStart).replace(/-/g, '/'))
+        sliderEndLabel.text(parseIntoDate(globalEnd).replace(/-/g, '/'))
+
+        var maxVal = d3.max(dataset, function(d) {
+            if (d.key === "undefined") {
+            }
+            else {
+                return d3.max(d.values[0].val )
+            }
+            });
+
+
+        var minVal = d3.min(dataset, function(d) {
+            if (d.key === "undefined") {
+            }
+            else {
+                return d3.min(d.values[0].val)
+            }
+            });
+
+        yScale.domain([minVal, maxVal])
+
+        sliderX.domain([0, dataset.length-1])
+
+        slider.attr("x2", sliderX.range()[1]+8)
+
+        
+
+        var yAxis = d3.axisLeft()
+                .scale(yScale)
+                .ticks(10)
+
+        chartSVG.selectAll(".myYaxis").transition()
+            .duration(3000)
+            .call(yAxis);
+
+        if (dataset[0].key === "undefined") {
+            update_date(1, dataset)
+        } else {
+            update_date(0, dataset)
+        }
+        
+
+
+        }
+
+        monthDaySelectionButton
+            .on("click", function() {
+            var button = d3.select(this);
+            if (button.text() == "Month") {
+                mode = 'Month'
+                console.log('selecting by month')
+                draw(globalStart, globalEnd, mode)
+                button.text("Day");
+                } else {
+                mode = 'Day'
+                console.log('selecting by day')
+                draw(globalStart, globalEnd, mode)
+                button.text("Month");
+            }
+        })
+
+
+
+        playButton
+            .on("click", function() {
+            var button = d3.select(this);
+            if (button.text() == "Pause") {
+                moving = false;
+                clearInterval(timer);
+            // timer = 0;
+                button.text("Play");
+                } else {
+                moving = true;
+                timer = setInterval(step, 100);
+                button.text("Pause");
+            }
+        })
+        
+        function update_date(new_index, entire_dataset) {
+
+            chartTitle.text(function() {
+                return parseIntoDate(dataset[new_index].values[dataset[new_index].values.length-1].Date) + ' UST SPOT CURVE'
+            })
+
+            mouseOut()
+
+            globalIndex = new_index
+
+
+
+            stepFwrdButton.transition()
+                .duration(200)
+                .style("fill", function() {
+                    if (globalIndex === dataset.length-1) {
+                        return "#C4C8CA"
+                    } else {
+                        return "#E76F63"
+                    }
+                })
+
+            stepBwrdButton.transition()
+                .duration(200)
+                .style("fill", function() {
+                    if (dataset[0].key === "undefined") {
+                    stepStartIndex = 1
+                } else {
+                    stepStartIndex = 0
+                }
+                    if (globalIndex === stepStartIndex) {
+                        return "#C4C8CA"
+                    } else {
+                        return "#E76F63"
+                    }
+                })
+
+            handle.attr("x", function() {
+                return sliderX(new_index)})
+
+
+
+          // Give these new data to update line
+            tenor_line
+            .datum(dataset[new_index].values[dataset[new_index].values.length-1].val)
+            .transition()
+            .duration(150)
+            .ease(d3.easeLinear)
+            .attr("d", line_constructor);
+
+            overlays.data(dataset[new_index].values[dataset[new_index].values.length-1].val)
+                .enter()
+                .merge(overlays)
+                .transition()
+                .duration(150)
+                .attr("cy",  function(d) {
+                    return yScale(d);
+                })
+
+
+
+
+        }
+
+
+        var stepFwrdButton = d3.select('#step-fwrd-button')
+            .on("click", function() {
+                step()
+            })
+
+        var stepBwrdButton = d3.select('#step-bwrd-button')
+            .on("click", function() {
+                step(-1)
+            })
+
+        draw(absMinDate, absMaxDate, mode)
+
+        function step(step_size = 1) {
+            if (step_size === 1) {
+                if (globalIndex < dataset.length-1) {
+                    update_date(globalIndex + step_size, dataset)
+            }} else {
+                if (globalIndex > 0) {
+                    update_date(globalIndex + step_size, dataset)
+                    }
+                }
+
+            }
+
+
+        function mouseOver(d, i) {
+
+            var mouseOverDummyText = chartSVG.append("text")
+                .attr("id", "mouse-over-dummy-text")
+                .attr("class", "mouse-over-text")
+                .attr("x", xScale(i))
+                .attr("y", yScale(d))
+                .attr("dy", "-1.7em")
+                .attr("dx", "0.5em")
+                .style("pointer-events", "none")
+                .attr("opacity","0")
+                .text(d)
+
+            var mouseOverTextBox = chartSVG.append("rect")
+                .attr("id", "mouse-over-text-box")
+                .attr("class", "mouse-over-text-box")
+                .attr("x", xScale(i) )
+                .attr("y", yScale(d) -35)
+                .attr("width", function() {
+                    return mouseOverDummyText.node().getBoundingClientRect().width + 12
+                })
+                .attr("height", function() {
+                    return mouseOverDummyText.node().getBoundingClientRect().height + 8
+                })
+                .style("fill", "#E76F63")
+
+            var mouseOverText = chartSVG.append("text")
+                .attr("id", "mouse-over-text")
+                .attr("class", "mouse-over-text")
+                .attr("x", xScale(i))
+                .attr("y", yScale(d))
+                .attr("dy", "-1.7em")
+                .attr("dx", "0.5em")
+                .style("pointer-events", "none")
+                .text(d)
+
+            
+            
+            var mouseOverLine = chartSVG.append("line")
+                .attr("id", "mouse-over-line")
+                .attr("class", "mouse-over-line")
+                .attr("x1", xScale(i))
+                .attr("x2", xScale(i))
+                .attr("y1", -top_padding)
+                .attr("y2", yScale(d))
+                .style("stroke-dasharray", "3, 3")
+                .style("stroke", "#FCFCFC")
+                .attr("opacity", 0.5)
+        }
+
+        function mouseOut() {
+            d3.select('#mouse-over-text').remove()
+            d3.select('#mouse-over-text-box').remove()
+            d3.select('#mouse-over-dummy-text').remove()
+            d3.select('#mouse-over-line').remove()
+        }
+
+
+
+
+        
+        
+        })
+
+// Set-up the export button
+d3.select('#save-button').on('click', function() {
+	var svgString = getSVGString(svg.node());
+    console.log(svgString)
+    svgString2Image( svgString, width, height, 'png', save );
+    
+    
+    function save( dataBlob, filesize ){
+        
+		saveAs( dataBlob, 'chart.png' );
+	}
+	 // passes Blob and filesize String to the callback
+
+
+});
+
+// Below are the functions that handle actual exporting:
+// getSVGString ( svgNode ) and svgString2Image( svgString, width, height, format, callback )
+function getSVGString( svgNode ) {
+	svgNode.setAttribute('xlink', 'http://www.w3.org/1999/xlink');
+	var cssStyleText = getCSSStyles( svgNode );
+	appendCSS( cssStyleText, svgNode );
+
+	var serializer = new XMLSerializer();
+	var svgString = serializer.serializeToString(svgNode);
+	svgString = svgString.replace(/(\w+)?:?xlink=/g, 'xmlns:xlink=');
+	svgString = svgString.replace(/NS\d+:href/g, 'xlink:href');
+
+	return svgString;
+
+	function getCSSStyles( parentElement ) {
+		var selectorTextArr = [];
+
+		// Add Parent element Id and Classes to the list
+		selectorTextArr.push( '#'+parentElement.id );
+		for (var c = 0; c < parentElement.classList.length; c++)
+				if ( !contains('.'+parentElement.classList[c], selectorTextArr) )
+					selectorTextArr.push( '.'+parentElement.classList[c] );
+
+		// Add Children element Ids and Classes to the list
+		var nodes = parentElement.getElementsByTagName("*");
+		for (var i = 0; i < nodes.length; i++) {
+			var id = nodes[i].id;
+            
+			if ( !contains('#'+id, selectorTextArr) )
+				selectorTextArr.push( '#'+id );
+
+			var classes = nodes[i].classList;
+			for (var c = 0; c < classes.length; c++)
+				if ( !contains('.'+classes[c], selectorTextArr) )
+					selectorTextArr.push( '.'+classes[c] );
+		}
+		// Extract CSS Rules
+		var extractedCSSText = "";
+		for (var i = 0; i < document.styleSheets.length; i++) {
+			var s = document.styleSheets[i];
+            
+			
+			try {
+			    if(!s.cssRules) continue;
+			} catch( e ) {
+		    		if(e.name !== 'SecurityError') throw e;
+		    		continue;
+		    	}
+
+			var cssRules = s.cssRules;
+            
+            //manually add css rules:
+            selectorTextArr.push(".myXaxis text", ".myYaxis text", ".myYaxis line", ".myXaxis line", ".myYaxis path", ".myXaxis path")
+            
+			for (var r = 0; r < cssRules.length; r++) {
+				if ( contains( cssRules[r].selectorText, selectorTextArr ) )
+					extractedCSSText += cssRules[r].cssText;
+			}
+		}
+		
+        
+		return extractedCSSText;
+
+		function contains(str,arr) {
+			return arr.indexOf( str ) === -1 ? false : true;
+		}
+
+	}
+
+	function appendCSS( cssText, element ) {
+		var styleElement = document.createElement("style");
+		styleElement.setAttribute("type","text/css"); 
+		styleElement.innerHTML = cssText;
+		var refNode = element.hasChildNodes() ? element.children[0] : null;
+		element.insertBefore( styleElement, refNode );
+	}
+}
+
+
+function svgString2Image( svgString, width, height, format, callback ) {
+    
+	var format = format ? format : 'png';
+    
+	var imgsrc = 'data:image/svg+xml;base64,'+ btoa( unescape( encodeURIComponent( svgString ) ) );
+
+	var canvas = document.createElement("canvas");
+	var context = canvas.getContext("2d");
+
+	canvas.width = width;
+	canvas.height = height;
+    
+	var image = new Image();
+	image.onload = function() {
+		context.clearRect ( 0, 0, width, height );
+		context.drawImage(image, 0, 0, width, height);
+
+		canvas.toBlob( function(blob) {
+			var filesize = Math.round( blob.length/1024 ) + ' KB';
+			if ( callback ) callback( blob, filesize );
+		});	
+	};
+
+	image.src = imgsrc;
+    
+    }
+
+
+
+
+
+
+        
+
+
+
+
+
+            
+
+ 
+			
+		</script>
+	</body>
+</html>
